@@ -1,9 +1,13 @@
 use clap::{Parser, Subcommand, command};
 
-use crate::commands::table::{TableArgs, cmd_table};
+use crate::commands::{
+    hand::{HandArgs, cmd_hand},
+    table::{TableArgs, cmd_table},
+};
 
 mod args;
 mod commands;
+mod utils;
 
 #[derive(Parser)]
 #[command(version)]
@@ -14,18 +18,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Table {
-        #[command(flatten)]
-        table_args: TableArgs,
-    },
+    Hand(HandArgs),
+    Table(TableArgs),
 }
 
 pub fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Table { table_args } => {
-            cmd_table(table_args);
+        Commands::Hand(args) => {
+            if let Err(error) = cmd_hand(args) {
+                eprintln!("Error: {error}")
+            }
+        }
+        Commands::Table(args) => {
+            cmd_table(args);
         }
     }
 }

@@ -25,9 +25,10 @@ impl Hand {
     }
 
     pub fn add_card(&mut self, card: Card) {
+        let value = card.rank.value();
+        self.is_pair = self.size == 1 && value == self.value;
         self.size += 1;
         self.value += card.rank.value();
-
         if card.rank == Rank::Ace {
             self.soft_aces += 1;
         }

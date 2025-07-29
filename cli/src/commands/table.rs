@@ -1,14 +1,16 @@
 use std::fmt;
 
 use clap::{Args, ValueEnum};
-use colored::{ColoredString, Colorize};
 use engine::{
     shoe::CountShoe,
-    strategy::{PlayerAction, StrategyGenerator, StrategyTable},
+    strategy::{StrategyGenerator, StrategyTable},
 };
 use serde::Serialize;
 
-use crate::args::rules::RulesArgs;
+use crate::{
+    args::rules::RulesArgs,
+    utils::format::{action_to_colored_string, action_to_string},
+};
 
 #[derive(ValueEnum, Clone)]
 enum PrintFormat {
@@ -105,28 +107,6 @@ impl TableType {
             }
         }
     }
-}
-
-fn action_to_string(action: &PlayerAction) -> String {
-    String::from(match action {
-        PlayerAction::Hit => "H",
-        PlayerAction::Stand => "S",
-        PlayerAction::DoubleOrHit => "DH",
-        PlayerAction::DoubleOrStand => "DS",
-        PlayerAction::Split => "P",
-    })
-}
-
-fn action_to_colored_string(action: &PlayerAction) -> ColoredString {
-    let s = action_to_string(action);
-    match action {
-        PlayerAction::Hit => s.red(),
-        PlayerAction::Stand => s.yellow(),
-        PlayerAction::DoubleOrHit => s.cyan(),
-        PlayerAction::DoubleOrStand => s.cyan(),
-        PlayerAction::Split => s.green(),
-    }
-    .bold()
 }
 
 struct MarkdownTablePrinter;

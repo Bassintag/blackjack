@@ -21,6 +21,35 @@ pub struct RoundEvs {
     pub split: Option<f64>,
 }
 
+impl RoundEvs {
+    pub fn best(&self) -> PlayerAction {
+        let mut best_action = PlayerAction::Stand;
+        let mut best_value = self.stand;
+
+        if self.hit > best_value {
+            best_value = self.hit;
+            best_action = PlayerAction::Hit;
+        }
+
+        if self.double > best_value {
+            best_value = self.double;
+            if best_action == PlayerAction::Stand {
+                best_action = PlayerAction::DoubleOrStand;
+            } else {
+                best_action = PlayerAction::DoubleOrHit;
+            }
+        }
+
+        if let Some(split_val) = self.split {
+            if split_val > best_value {
+                best_action = PlayerAction::Split;
+            }
+        }
+
+        best_action
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerAction {
     Hit,
@@ -54,7 +83,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
     pub fn iter_dealer_hands(&self, state: &GameState<S>) -> impl Iterator<Item = (Hand, f64)> {
         let rules = self.rules.clone();
         let mut starting_hand = Hand::new();
-        let mut queue = VecDeque::new();
+        let mut queue = VecDeque::with_capacity(100_000);
 
         starting_hand.add_card(state.dealer_upcard);
         queue.push_back((starting_hand, self.shoe.clone(), 1.0));
