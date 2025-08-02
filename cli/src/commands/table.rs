@@ -2,7 +2,7 @@ use std::fmt;
 
 use clap::{Args, ValueEnum};
 use engine::{
-    shoe::{CountShoe, InfiniteShoe},
+    shoe::InfiniteShoe,
     strategy::{StrategyGenerator, StrategyTable},
 };
 use serde::Serialize;

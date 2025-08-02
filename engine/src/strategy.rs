@@ -405,9 +405,9 @@ impl StrategyValue {
 }
 
 pub struct StrategyTable {
-    values: Vec<StrategyValue>,
-    from: u8,
-    to: u8,
+    pub values: Vec<StrategyValue>,
+    pub from: u8,
+    pub to: u8,
 }
 
 impl StrategyTable {
