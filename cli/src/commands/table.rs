@@ -2,7 +2,7 @@ use std::fmt;
 
 use clap::{Args, ValueEnum};
 use engine::{
-    shoe::CountShoe,
+    shoe::{CountShoe, InfiniteShoe},
     strategy::{StrategyGenerator, StrategyTable},
 };
 use serde::Serialize;
@@ -53,7 +53,7 @@ pub struct TableArgs {
 
 pub fn cmd_table(args: &TableArgs) {
     let all = !args.hard && !args.soft && !args.pair;
-    let shoe = CountShoe::new(args.rules.num_decks);
+    let shoe = InfiniteShoe::new();
     let mut generator = StrategyGenerator::new(args.rules.to_rules(), shoe);
     let printer: Box<dyn TablePrinter> = match args.format {
         PrintFormat::Markdown => Box::new(MarkdownTablePrinter {}),

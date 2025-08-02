@@ -1,17 +1,23 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    hash::Hash,
-    iter,
-    ops::RangeInclusive,
-};
+use std::{hash::Hash, ops::RangeInclusive};
+
+use ahash::AHashMap;
 
 use crate::{
     card::{Card, Rank},
     game::GameState,
     hand::{Hand, Outcome},
-    rules::{Rules, Soft17Rule},
+    rules::Rules,
     shoe::Shoe,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayerAction {
+    Hit,
+    Stand,
+    DoubleOrHit,
+    DoubleOrStand,
+    Split,
+}
 
 #[derive(Clone, Copy)]
 pub struct RoundEvs {
@@ -50,22 +56,21 @@ impl RoundEvs {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerAction {
-    Hit,
-    Stand,
-    DoubleOrHit,
-    DoubleOrStand,
-    Split,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct DealerHandKey<S: Shoe> {
+    upcard: Card,
+    shoe: S,
 }
 
 pub struct StrategyGenerator<S: Shoe> {
     rules: Rules,
     shoe: S,
-    hit_cache: HashMap<GameState<S>, f64>,
-    stand_cache: HashMap<GameState<S>, f64>,
-    double_cache: HashMap<GameState<S>, f64>,
-    split_cache: HashMap<GameState<S>, f64>,
+    hit_cache: AHashMap<GameState<S>, f64>,
+    stand_cache: AHashMap<GameState<S>, f64>,
+    double_cache: AHashMap<GameState<S>, f64>,
+    split_cache: AHashMap<GameState<S>, f64>,
+    dealer_hand_cache: AHashMap<DealerHandKey<S>, Vec<(Hand, f64)>>,
+    epsilon: f64,
 }
 
 impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
@@ -73,67 +78,72 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         Self {
             rules,
             shoe,
-            hit_cache: HashMap::new(),
-            stand_cache: HashMap::new(),
-            double_cache: HashMap::new(),
-            split_cache: HashMap::new(),
+            hit_cache: AHashMap::new(),
+            stand_cache: AHashMap::new(),
+            double_cache: AHashMap::new(),
+            split_cache: AHashMap::new(),
+            dealer_hand_cache: AHashMap::new(),
+            epsilon: 1e-5,
         }
     }
 
-    pub fn iter_dealer_hands(&self, state: &GameState<S>) -> impl Iterator<Item = (Hand, f64)> {
-        let rules = self.rules.clone();
-        let mut starting_hand = Hand::new();
-        let mut queue = VecDeque::with_capacity(100_000);
+    pub fn get_dealer_hands(&mut self, state: &mut GameState<S>) -> Vec<(Hand, f64)> {
+        let key = DealerHandKey {
+            upcard: state.dealer_upcard,
+            shoe: state.shoe.clone(),
+        };
+        if let Some(cached) = self.dealer_hand_cache.get(&key) {
+            return cached.clone();
+        }
 
-        starting_hand.add_card(state.dealer_upcard);
-        queue.push_back((starting_hand, self.shoe.clone(), 1.0));
+        let mut map = AHashMap::<Hand, f64>::with_capacity(200);
 
-        iter::from_fn(move || {
-            while let Some((hand, shoe, probability)) = queue.pop_front() {
-                let value = hand.value();
+        let mut stack = Vec::with_capacity(100);
+        let mut start_hand = Hand::new();
+        start_hand.add_card(&state.dealer_upcard);
+        stack.push((start_hand, 1.0));
 
-                let must_stand = if value > 17 {
-                    true
-                } else if value == 17 {
-                    if hand.is_soft() {
-                        match rules.dealer_soft_17 {
-                            Soft17Rule::Stand => true,
-                            Soft17Rule::Hit => false,
-                        }
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                };
-
-                if must_stand {
-                    return Some((hand, probability));
-                }
-
-                for (card, weight) in shoe.iter_draws() {
-                    let mut new_hand = hand.clone();
-                    new_hand.add_card(card);
-
-                    let mut new_shoe = shoe.clone();
-                    new_shoe.remove_card(&card);
-
-                    queue.push_back((new_hand, new_shoe, probability * weight));
-                }
+        while let Some((hand, weight)) = stack.pop() {
+            if weight < self.epsilon {
+                continue;
+            }
+            if self.rules.dealer_must_stand(&hand) {
+                map.entry(hand)
+                    .and_modify(|w| *w += weight)
+                    .or_insert(weight);
+                continue;
             }
 
-            None
-        })
+            for (card, draw_weight) in state.shoe.get_draws() {
+                state.shoe.remove_card(&card);
+
+                let mut next_hand = hand.clone();
+                next_hand.add_card(&card);
+                stack.push((next_hand, weight * draw_weight));
+
+                state.shoe.add_card(&card);
+            }
+        }
+
+        let result: Vec<_> = map.into_iter().collect();
+
+        self.dealer_hand_cache.insert(key, result.clone());
+
+        result
     }
 
-    pub fn expected_value_stand(&mut self, state: &GameState<S>) -> f64 {
+    pub fn expected_value_stand(&mut self, state: &mut GameState<S>, branch_weight: f64) -> f64 {
         if let Some(item) = self.stand_cache.get(state) {
             return *item;
         }
         let mut total_ev = 0.0;
         let mut total_weight = 0.0;
 
-        for (dealer_hand, weight) in self.iter_dealer_hands(state) {
+        for (dealer_hand, hand_weight) in self.get_dealer_hands(state) {
+            let weight = branch_weight * hand_weight;
+            if weight < self.epsilon {
+                continue;
+            }
             let ev = match Hand::compare(&state.player_hand, &dealer_hand) {
                 Outcome::Win => {
                     if state.player_hand.is_blackjack() {
@@ -145,8 +155,8 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
                 Outcome::Push => 0.0,
                 Outcome::Lose => -1.0,
             };
-            total_weight += weight;
-            total_ev += ev * weight;
+            total_weight += hand_weight;
+            total_ev += ev * hand_weight;
         }
 
         let ev = total_ev / total_weight;
@@ -154,30 +164,37 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         ev
     }
 
-    pub fn expected_value_hit(&mut self, state: &GameState<S>) -> f64 {
+    pub fn expected_value_hit(&mut self, state: &mut GameState<S>, branch_weight: f64) -> f64 {
         if let Some(item) = self.hit_cache.get(&state) {
             return *item;
         }
         let mut total_ev = 0.0;
         let mut total_weight = 0.0;
 
-        for (card, weight) in state.shoe.iter_draws() {
-            let mut state_copy = state.clone();
-            state_copy.player_hand.add_card(card);
-            state_copy.shoe.remove_card(&card);
-
-            let ev = if state_copy.player_hand.is_bust() {
+        for (card, draw_weight) in state.shoe.get_draws() {
+            let weight = branch_weight * draw_weight;
+            if weight < self.epsilon {
+                continue;
+            }
+            state.player_hand.add_card(&card);
+            let ev = if state.player_hand.is_bust() {
                 -1.0
-            } else if state_copy.player_hand.value() == 21 {
-                self.expected_value_stand(&state_copy)
             } else {
-                let ev_hit = self.expected_value_hit(&state_copy);
-                let ev_stand = self.expected_value_stand(&state_copy);
-                f64::max(ev_hit, ev_stand)
+                state.shoe.remove_card(&card);
+                let ev = if state.player_hand.value() == 21 {
+                    self.expected_value_stand(state, weight)
+                } else {
+                    let ev_hit = self.expected_value_hit(state, weight);
+                    let ev_stand = self.expected_value_stand(state, weight);
+                    f64::max(ev_hit, ev_stand)
+                };
+                state.shoe.add_card(&card);
+                ev
             };
+            state.player_hand.remove_card(&card);
 
-            total_ev += ev * weight;
-            total_weight += weight;
+            total_ev += ev * draw_weight;
+            total_weight += draw_weight;
         }
 
         let ev = total_ev / total_weight;
@@ -185,7 +202,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         ev
     }
 
-    pub fn expected_value_double(&mut self, state: &GameState<S>) -> f64 {
+    pub fn expected_value_double(&mut self, state: &mut GameState<S>, branch_weight: f64) -> f64 {
         if let Some(item) = self.double_cache.get(state) {
             return *item;
         }
@@ -193,14 +210,19 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         let mut total_ev = 0.0;
         let mut total_weight = 0.0;
 
-        for (card, weight) in state.shoe.iter_draws() {
-            let mut state_copy = state.clone();
-            state_copy.player_hand.add_card(card);
-            state_copy.shoe.remove_card(&card);
+        for (card, draw_weight) in state.shoe.get_draws() {
+            let weight = branch_weight * draw_weight;
+            if weight < self.epsilon {
+                continue;
+            }
+            state.player_hand.add_card(&card);
+            state.shoe.remove_card(&card);
+            let ev = self.expected_value_stand(state, weight) * 2.0;
+            state.shoe.add_card(&card);
+            state.player_hand.remove_card(&card);
 
-            let ev = self.expected_value_stand(&state_copy) * 2.0;
-            total_ev += weight * ev;
-            total_weight += weight;
+            total_ev += draw_weight * ev;
+            total_weight += draw_weight;
         }
 
         let ev = total_ev / total_weight;
@@ -208,7 +230,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         ev
     }
 
-    pub fn expected_value_split(&mut self, state: &GameState<S>) -> f64 {
+    pub fn expected_value_split(&mut self, state: &mut GameState<S>, branch_weight: f64) -> f64 {
         if let Some(item) = self.split_cache.get(state) {
             return *item;
         }
@@ -216,21 +238,26 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         let mut total_ev = 0.0;
         let mut total_weight = 0.0;
 
-        for (card, weight) in state.shoe.iter_draws() {
-            let mut state_copy = state.clone();
-            state_copy.player_hand.split();
-            state_copy.player_hand.add_card(card);
-            state_copy.shoe.remove_card(&card);
-
+        state.player_hand.split();
+        for (card, draw_weight) in state.shoe.get_draws() {
+            let weight = branch_weight * draw_weight;
+            if weight < self.epsilon {
+                continue;
+            }
+            state.player_hand.add_card(&card);
+            state.shoe.remove_card(&card);
             let mut ev = f64::max(
-                self.expected_value_hit(&state_copy),
-                self.expected_value_stand(&state_copy),
+                self.expected_value_hit(state, weight),
+                self.expected_value_stand(state, weight),
             );
             if self.rules.double_after_split_allowed {
-                ev = ev.max(self.expected_value_double(&state_copy))
+                ev = ev.max(self.expected_value_double(state, weight))
             }
-            total_ev += weight * ev * 2.0;
-            total_weight += weight;
+            state.shoe.add_card(&card);
+            state.player_hand.remove_card(&card);
+
+            total_ev += draw_weight * ev * 2.0;
+            total_weight += draw_weight;
         }
 
         let ev = total_ev / total_weight;
@@ -238,7 +265,12 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         ev
     }
 
-    pub fn eval_round(&mut self, player_hand: Hand, dealer_upcard: Card) -> RoundEvs {
+    pub fn eval_round(
+        &mut self,
+        player_hand: Hand,
+        dealer_upcard: Card,
+        is_pair: bool,
+    ) -> RoundEvs {
         let mut state = GameState {
             dealer_upcard,
             player_hand,
@@ -247,16 +279,20 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
 
         state.shoe.remove_card(&dealer_upcard);
 
-        RoundEvs {
-            hit: self.expected_value_hit(&state),
-            stand: self.expected_value_stand(&state),
-            double: self.expected_value_double(&state),
-            split: if player_hand.is_pair() {
-                Some(self.expected_value_split(&state))
+        let evs = RoundEvs {
+            hit: self.expected_value_hit(&mut state, 1.0),
+            stand: self.expected_value_stand(&mut state, 1.0),
+            double: self.expected_value_double(&mut state, 1.0),
+            split: if is_pair {
+                Some(self.expected_value_split(&mut state, 1.0))
             } else {
                 None
             },
-        }
+        };
+
+        state.shoe.add_card(&dealer_upcard);
+
+        evs
     }
 
     pub fn hard_table(&mut self) -> StrategyTable {
@@ -270,7 +306,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
 
                 let player_hand = Hand::hard_from_value(player_value);
 
-                let evs = self.eval_round(player_hand, dealer_upcard);
+                let evs = self.eval_round(player_hand, dealer_upcard, false);
                 let value = StrategyValue::from_evs(evs);
 
                 table.set(player_value, dealer_value, value);
@@ -291,7 +327,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
 
                 let player_hand = Hand::soft_from_value(player_value);
 
-                let evs = self.eval_round(player_hand, dealer_upcard);
+                let evs = self.eval_round(player_hand, dealer_upcard, false);
                 let value = StrategyValue::from_evs(evs);
 
                 table.set(player_value, dealer_value, value);
@@ -312,7 +348,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
 
                 let player_hand = Hand::pair_from_single_value(player_value);
 
-                let evs = self.eval_round(player_hand, dealer_upcard);
+                let evs = self.eval_round(player_hand, dealer_upcard, true);
                 let value = StrategyValue::from_evs(evs);
 
                 table.set(player_value, dealer_value, value);

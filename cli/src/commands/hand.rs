@@ -30,14 +30,18 @@ pub fn cmd_hand(args: &HandArgs) -> Result<()> {
 
     let parts = args.player.split(":");
     let mut player_hand = Hand::new();
+    let mut cards = Vec::<Card>::new();
     for part in parts {
         let player_value = parse_value(&part.to_string())?;
-        player_hand.add_card(Card::from_rank(Rank::from_value(player_value)));
+        let card = Card::from_rank(Rank::from_value(player_value));
+        player_hand.add_card(&card);
+        cards.push(card);
     }
 
     println!("Dealer value: {}", dealer_value);
 
-    let evs = strategy.eval_round(player_hand, dealer_upcard);
+    let is_pair = cards.len() == 2 && cards[0].rank == cards[1].rank;
+    let evs = strategy.eval_round(player_hand, dealer_upcard, is_pair);
 
     println!("Expected values:");
     println!("  Hit: {}", colorize_ev(evs.hit));

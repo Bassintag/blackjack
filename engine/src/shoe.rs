@@ -11,7 +11,7 @@ pub enum HandType {
 }
 
 pub trait Shoe {
-    fn iter_draws(&self) -> impl Iterator<Item = (Card, f64)>;
+    fn get_draws(&self) -> Vec<(Card, f64)>;
 
     fn iter_player_hands(
         &self,
@@ -19,7 +19,9 @@ pub trait Shoe {
         hand_type: HandType,
     ) -> impl Iterator<Item = (Hand, f64)>;
 
-    fn remove_card(&mut self, card: &Card) -> ();
+    fn remove_card(&mut self, card: &Card);
+
+    fn add_card(&mut self, _card: &Card);
 }
 
 const CARD_PROBABILITIES: [(Rank, f64); 10] = [
@@ -39,10 +41,12 @@ const CARD_PROBABILITIES: [(Rank, f64); 10] = [
 pub struct InfiniteShoe;
 
 impl Shoe for InfiniteShoe {
-    fn iter_draws(&self) -> impl Iterator<Item = (Card, f64)> {
-        CARD_PROBABILITIES
-            .iter()
-            .map(|(rank, probability)| (Card::from_rank(*rank), *probability))
+    fn get_draws(&self) -> Vec<(Card, f64)> {
+        let mut vec = Vec::with_capacity(CARD_PROBABILITIES.len());
+        for (rank, weight) in CARD_PROBABILITIES {
+            vec.push((Card::from_rank(rank), weight));
+        }
+        vec
     }
 
     fn iter_player_hands(
@@ -58,7 +62,9 @@ impl Shoe for InfiniteShoe {
         iter::once((hand, 1.0))
     }
 
-    fn remove_card(&mut self, _card: &Card) -> () {}
+    fn remove_card(&mut self, _card: &Card) {}
+
+    fn add_card(&mut self, _card: &Card) {}
 }
 
 impl InfiniteShoe {
@@ -74,16 +80,14 @@ pub struct CountShoe {
 }
 
 impl Shoe for CountShoe {
-    fn iter_draws(&self) -> impl Iterator<Item = (Card, f64)> {
+    fn get_draws(&self) -> Vec<(Card, f64)> {
+        let mut vec = Vec::with_capacity(10);
         let total = self.total as f64;
-        self.counts
-            .iter()
-            .filter(|&&count| count > 0)
-            .enumerate()
-            .map(move |(i, &count)| {
-                let card = Card::from_rank(Rank::from_value((i as u8) + 2));
-                (card, count as f64 / total)
-            })
+        for i in 0..10 {
+            let card = Card::from_rank(Rank::from_value((i as u8) + 2));
+            vec.push((card, self.counts[i] as f64 / total));
+        }
+        vec
     }
 
     fn iter_player_hands(
@@ -96,12 +100,18 @@ impl Shoe for CountShoe {
         vec.into_iter()
     }
 
-    fn remove_card(&mut self, card: &Card) -> () {
+    fn remove_card(&mut self, card: &Card) {
         let i = (card.rank.value() - 2) as usize;
         if self.counts[i] > 0 {
             self.counts[i] -= 1;
             self.total -= 1;
         }
+    }
+
+    fn add_card(&mut self, card: &Card) {
+        let i = (card.rank.value() - 2) as usize;
+        self.counts[i] += 1;
+        self.total += 1;
     }
 }
 

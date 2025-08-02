@@ -4,10 +4,9 @@ use crate::card::{Card, Rank};
 pub struct Hand {
     size: u8,
     value: u8,
+    aces: u8,
     soft_aces: u8,
-    is_pair: bool,
 }
-
 pub enum Outcome {
     Win,
     Push,
@@ -19,30 +18,52 @@ impl Hand {
         Self {
             size: 0,
             value: 0,
+            aces: 0,
             soft_aces: 0,
-            is_pair: false,
         }
     }
 
-    pub fn add_card(&mut self, card: Card) {
+    pub fn add_card(&mut self, card: &Card) {
         let value = card.rank.value();
-        self.is_pair = self.size == 1 && value == self.value;
         self.size += 1;
-        self.value += card.rank.value();
+        self.value += value;
         if card.rank == Rank::Ace {
+            self.aces += 1;
             self.soft_aces += 1;
         }
 
-        while self.value > 21 && self.soft_aces > 0 {
+        if self.value > 21 && self.soft_aces > 0 {
             self.value -= 10;
             self.soft_aces -= 1;
+        }
+    }
+
+    pub fn remove_card(&mut self, card: &Card) {
+        let value = card.rank.value();
+
+        self.size -= 1;
+
+        if card.rank == Rank::Ace {
+            self.aces -= 1;
+            if self.soft_aces > 0 && self.value >= 11 {
+                self.soft_aces -= 1;
+                self.value -= 11;
+            } else {
+                self.value -= 1;
+            }
+        } else {
+            self.value -= value;
+        }
+
+        if self.value <= 11 && self.aces > self.soft_aces {
+            self.value += 10;
+            self.soft_aces += 1;
         }
     }
 
     pub fn split(&mut self) {
         self.value /= 2;
         self.size = 1;
-        self.is_pair = false;
     }
 
     pub fn value(&self) -> u8 {
@@ -61,16 +82,12 @@ impl Hand {
         self.soft_aces > 0
     }
 
-    pub fn is_pair(&self) -> bool {
-        self.is_pair
-    }
-
     pub fn hard_from_value(target: u8) -> Self {
         Self {
             size: 2,
             value: target,
             soft_aces: 0,
-            is_pair: false,
+            aces: 0,
         }
     }
 
@@ -79,16 +96,15 @@ impl Hand {
             size: 2,
             value: target,
             soft_aces: 1,
-            is_pair: false,
+            aces: if target == 12 { 2 } else { 1 },
         }
     }
 
     pub fn pair_from_single_value(value: u8) -> Self {
         let mut hand = Self::new();
         let card = Card::from_rank(Rank::from_value(value));
-        hand.add_card(card);
-        hand.add_card(card);
-        hand.is_pair = true;
+        hand.add_card(&card);
+        hand.add_card(&card);
         hand
     }
 
