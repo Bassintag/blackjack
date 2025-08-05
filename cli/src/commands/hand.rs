@@ -51,9 +51,12 @@ pub fn cmd_hand(args: &HandArgs) -> Result<()> {
         println!("  Split: {}", colorize_ev(split_ev));
     }
 
+    let (best_action, ev) = evs.best();
+
     println!(
-        "\nBest action is: {}",
-        action_to_long_colored_string(&evs.best())
+        "\nBest action is: {}, (ev = {:.2})",
+        action_to_long_colored_string(&best_action),
+        ev
     );
 
     Ok(())

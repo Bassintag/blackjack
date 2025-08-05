@@ -1,0 +1,11 @@
+{
+  "name": "blackjack",
+  "private": true,
+  "workspaces": [
+    "app",
+    "wasm/pkg"
+  ],
+  "scripts": {
+    "build:wasm": "wasm-pack build wasm -t bundler --release --out-name index --scope blackjack"
+  }
+}

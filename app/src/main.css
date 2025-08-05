@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: Inter;
+  font-display: swap;
+  src: url("./assets/fonts/Inter.ttf");
+}
+
+@keyframes pan {
+  from {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+  to {
+    background-position-x: 750px;
+    background-position-y: 250px;
+  }
+}
+
+@theme {
+  --font-sans: "Inter", "sans-serif";
+
+  --color-background: var(--color-zinc-50);
+  --color-foreground: var(--color-zinc-950);
+
+  --color-accent: var(--color-zinc-300);
+  --color-accent-foreground: var(--color-zinc-950);
+
+  --color-muted: var(--color-zinc-200);
+  --color-muted-foreground: var(--color-zinc-700);
+
+  --color-border: var(--color-zinc-300);
+
+  --color-input: var(--color-zinc-100);
+
+  --color-primary: var(--color-green-600);
+}
+
+body {
+  background: repeating-conic-gradient(
+      var(--color-primary) 0 25%,
+      --alpha(var(--color-primary) / 95%) 0 50%
+    )
+    50% / 250px 250px;
+  color: var(--color-white);
+  animation: pan 60s linear infinite;
+}

@@ -28,7 +28,7 @@ pub struct RoundEvs {
 }
 
 impl RoundEvs {
-    pub fn best(&self) -> PlayerAction {
+    pub fn best(&self) -> (PlayerAction, f64) {
         let mut best_action = PlayerAction::Stand;
         let mut best_value = self.stand;
 
@@ -48,11 +48,12 @@ impl RoundEvs {
 
         if let Some(split_val) = self.split {
             if split_val > best_value {
+                best_value = self.hit;
                 best_action = PlayerAction::Split;
             }
         }
 
-        best_action
+        (best_action, best_value)
     }
 }
 
@@ -368,39 +369,8 @@ pub struct StrategyValue {
 
 impl StrategyValue {
     fn from_evs(evs: RoundEvs) -> Self {
-        if let Some(split) = evs.split {
-            if split > evs.hit && split > evs.stand && split > evs.double {
-                return Self {
-                    action: PlayerAction::Split,
-                    ev: split,
-                    evs,
-                };
-            }
-        }
-        if evs.double >= evs.hit && evs.double >= evs.stand {
-            let fallback_action = if evs.hit >= evs.stand {
-                PlayerAction::DoubleOrHit
-            } else {
-                PlayerAction::DoubleOrStand
-            };
-            Self {
-                action: fallback_action,
-                ev: evs.double,
-                evs,
-            }
-        } else if evs.hit >= evs.stand {
-            Self {
-                action: PlayerAction::Hit,
-                ev: evs.hit,
-                evs,
-            }
-        } else {
-            Self {
-                action: PlayerAction::Stand,
-                ev: evs.stand,
-                evs,
-            }
-        }
+        let (action, ev) = evs.best();
+        Self { action, ev, evs }
     }
 }
 
