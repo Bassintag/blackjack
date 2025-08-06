@@ -6,7 +6,7 @@ use crate::{
     card::{Card, Rank},
     game::GameState,
     hand::{Hand, Outcome},
-    rules::Rules,
+    rules::{Rules, SurrenderType},
     shoe::Shoe,
 };
 
@@ -17,6 +17,7 @@ pub enum PlayerAction {
     DoubleOrHit,
     DoubleOrStand,
     Split,
+    Surrender,
 }
 
 #[derive(Clone, Copy)]
@@ -24,6 +25,7 @@ pub struct RoundEvs {
     pub hit: f64,
     pub stand: f64,
     pub double: f64,
+    pub surrender: Option<f64>,
     pub split: Option<f64>,
 }
 
@@ -48,8 +50,15 @@ impl RoundEvs {
 
         if let Some(split_val) = self.split {
             if split_val > best_value {
-                best_value = self.hit;
+                best_value = split_val;
                 best_action = PlayerAction::Split;
+            }
+        }
+
+        if let Some(surrender_val) = self.surrender {
+            if surrender_val > best_value {
+                best_value = surrender_val;
+                best_action = PlayerAction::Surrender;
             }
         }
 
@@ -239,12 +248,13 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
         let mut total_ev = 0.0;
         let mut total_weight = 0.0;
 
-        state.player_hand.split();
+        state.split();
         for (card, draw_weight) in state.shoe.get_draws() {
             let weight = branch_weight * draw_weight;
             if weight < self.epsilon {
                 continue;
             }
+            let initial_value = state.player_hand.value();
             state.player_hand.add_card(&card);
             state.shoe.remove_card(&card);
             let mut ev = f64::max(
@@ -254,16 +264,46 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
             if self.rules.double_after_split_allowed {
                 ev = ev.max(self.expected_value_double(state, weight))
             }
+            if card.rank.value() == initial_value && state.splits < self.rules.max_splits {
+                ev = ev.max(self.expected_value_split(state, weight))
+            }
             state.shoe.add_card(&card);
             state.player_hand.remove_card(&card);
 
             total_ev += draw_weight * ev * 2.0;
             total_weight += draw_weight;
         }
+        state.unsplit();
 
         let ev = total_ev / total_weight;
         self.split_cache.insert(state.clone(), ev);
         ev
+    }
+
+    pub fn expected_value_surrender(&mut self, state: &mut GameState<S>) -> f64 {
+        match self.rules.surrender {
+            SurrenderType::Early => -0.5,
+            SurrenderType::Late => {
+                let mut hand = Hand::new();
+                hand.add_card(&state.dealer_upcard);
+
+                let mut total_ev = 0.0;
+                let mut total_weight = 0.0;
+
+                for (card, draw_weight) in state.shoe.get_draws() {
+                    hand.add_card(&card);
+
+                    let ev = if hand.is_blackjack() { -1.0 } else { -0.5 };
+                    total_ev += draw_weight * ev;
+                    total_weight += draw_weight;
+
+                    hand.remove_card(&card);
+                }
+
+                total_ev / total_weight
+            }
+            SurrenderType::None => unreachable!(),
+        }
     }
 
     pub fn eval_round(
@@ -276,6 +316,7 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
             dealer_upcard,
             player_hand,
             shoe: self.shoe.clone(),
+            splits: 0,
         };
 
         state.shoe.remove_card(&dealer_upcard);
@@ -284,6 +325,11 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
             hit: self.expected_value_hit(&mut state, 1.0),
             stand: self.expected_value_stand(&mut state, 1.0),
             double: self.expected_value_double(&mut state, 1.0),
+            surrender: if self.rules.surrender != SurrenderType::None {
+                Some(self.expected_value_surrender(&mut state))
+            } else {
+                None
+            },
             split: if is_pair {
                 Some(self.expected_value_split(&mut state, 1.0))
             } else {
@@ -394,6 +440,7 @@ impl StrategyTable {
                         hit: 0.0,
                         stand: 0.0,
                         double: 0.0,
+                        surrender: None,
                         split: None,
                     }
                 };

@@ -54,7 +54,7 @@ pub struct TableArgs {
 pub fn cmd_table(args: &TableArgs) {
     let all = !args.hard && !args.soft && !args.pair;
     let shoe = InfiniteShoe::new();
-    let mut generator = StrategyGenerator::new(args.rules.to_rules(), shoe);
+    let mut generator = StrategyGenerator::new((&args.rules).into(), shoe);
     let printer: Box<dyn TablePrinter> = match args.format {
         PrintFormat::Markdown => Box::new(MarkdownTablePrinter {}),
         PrintFormat::CSV => Box::new(CSVTablePrinter {}),

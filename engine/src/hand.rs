@@ -66,6 +66,11 @@ impl Hand {
         self.size = 1;
     }
 
+    pub fn unsplit(&mut self) {
+        self.value *= 2;
+        self.size = 2;
+    }
+
     pub fn value(&self) -> u8 {
         self.value
     }

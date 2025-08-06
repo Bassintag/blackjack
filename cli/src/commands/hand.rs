@@ -23,7 +23,7 @@ pub struct HandArgs {
 
 pub fn cmd_hand(args: &HandArgs) -> Result<()> {
     let shoe = CountShoe::new(args.rules.num_decks);
-    let mut strategy = StrategyGenerator::new(args.rules.to_rules(), shoe);
+    let mut strategy = StrategyGenerator::new((&args.rules).into(), shoe);
 
     let dealer_value = parse_value(&args.dealer)?;
     let dealer_upcard = Card::from_rank(Rank::from_value(dealer_value));
@@ -49,6 +49,9 @@ pub fn cmd_hand(args: &HandArgs) -> Result<()> {
     println!("  Double: {}", colorize_ev(evs.double));
     if let Some(split_ev) = evs.split {
         println!("  Split: {}", colorize_ev(split_ev));
+    }
+    if let Some(surrender_ev) = evs.surrender {
+        println!("  Surrender: {}", colorize_ev(surrender_ev));
     }
 
     let (best_action, ev) = evs.best();

@@ -8,6 +8,7 @@ pub fn action_to_string(action: &PlayerAction) -> String {
         PlayerAction::DoubleOrHit => "DH",
         PlayerAction::DoubleOrStand => "DS",
         PlayerAction::Split => "P",
+        PlayerAction::Surrender => "R",
     })
 }
 
@@ -18,6 +19,7 @@ pub fn action_to_long_string(action: &PlayerAction) -> String {
         PlayerAction::DoubleOrHit => "Double or Hit",
         PlayerAction::DoubleOrStand => "Double or Stand",
         PlayerAction::Split => "Split",
+        PlayerAction::Surrender => "Surrender",
     })
 }
 
@@ -28,6 +30,7 @@ fn colored_string(s: String, action: &PlayerAction) -> ColoredString {
         PlayerAction::DoubleOrHit => s.cyan(),
         PlayerAction::DoubleOrStand => s.cyan(),
         PlayerAction::Split => s.green(),
+        PlayerAction::Surrender => s.white(),
     }
     .bold()
 }

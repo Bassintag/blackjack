@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/Tooltip";
 import { cn } from "@/utlils/cn";
 import { backgroundColor } from "@/utlils/color";

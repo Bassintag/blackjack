@@ -49,6 +49,7 @@ pub enum PlayerAction {
     DoubleOrHit,
     DoubleOrStand,
     Split,
+    Surrender,
 }
 
 impl From<strategy::PlayerAction> for PlayerAction {
@@ -59,6 +60,24 @@ impl From<strategy::PlayerAction> for PlayerAction {
             strategy::PlayerAction::DoubleOrHit => Self::DoubleOrHit,
             strategy::PlayerAction::DoubleOrStand => Self::DoubleOrStand,
             strategy::PlayerAction::Split => Self::Split,
+            strategy::PlayerAction::Surrender => Self::Surrender,
+        }
+    }
+}
+
+#[derive(Tsify, Serialize, Deserialize)]
+pub enum SurrenderType {
+    None,
+    Early,
+    Late,
+}
+
+impl From<SurrenderType> for rules::SurrenderType {
+    fn from(value: SurrenderType) -> Self {
+        match value {
+            SurrenderType::None => Self::None,
+            SurrenderType::Early => Self::Early,
+            SurrenderType::Late => Self::Late,
         }
     }
 }
@@ -87,8 +106,8 @@ pub struct Rules {
     pub dealer_soft_17: Soft17Rule,
     #[serde(rename = "doubleAfterSplitAllowed")]
     pub double_after_split_allowed: bool,
-    #[serde(rename = "surrenderAllowed")]
-    pub surrender_allowed: bool,
+    #[serde(rename = "surrender")]
+    pub surrender: SurrenderType,
     #[serde(rename = "maxSplits")]
     pub max_splits: u8,
 }
@@ -99,7 +118,7 @@ impl From<Rules> for rules::Rules {
             num_decks: value.num_decks,
             dealer_soft_17: value.dealer_soft_17.into(),
             double_after_split_allowed: value.double_after_split_allowed,
-            surrender_allowed: value.surrender_allowed,
+            surrender: value.surrender.into(),
             max_splits: value.max_splits,
         }
     }
