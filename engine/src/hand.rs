@@ -62,12 +62,24 @@ impl Hand {
     }
 
     pub fn split(&mut self) {
-        self.value /= 2;
+        if self.aces == 2 {
+            self.aces = 1;
+            self.soft_aces = 1;
+            self.value = 11;
+        } else {
+            self.value /= 2;
+        }
         self.size = 1;
     }
 
     pub fn unsplit(&mut self) {
-        self.value *= 2;
+        if self.aces == 1 {
+            self.aces = 2;
+            self.soft_aces = 1;
+            self.value = 12;
+        } else {
+            self.value *= 2;
+        }
         self.size = 2;
     }
 

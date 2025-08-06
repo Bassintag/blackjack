@@ -1,7 +1,37 @@
 use std::fmt::Display;
 
 use clap::{Args, ValueEnum};
-use engine::rules::{Rules, Soft17Rule, SurrenderType};
+use engine::rules::{BlackjackPayout, Rules, Soft17Rule, SurrenderType};
+
+#[derive(ValueEnum, Clone)]
+pub enum BlackjackPayoutArg {
+    #[clap(name = "3to2")]
+    Ratio3to2,
+    #[clap(name = "6to5")]
+    Ratio6to5,
+}
+
+impl Display for BlackjackPayoutArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BlackjackPayoutArg::Ratio3to2 => "3to2",
+                BlackjackPayoutArg::Ratio6to5 => "6to5",
+            }
+        )
+    }
+}
+
+impl From<&BlackjackPayoutArg> for BlackjackPayout {
+    fn from(value: &BlackjackPayoutArg) -> Self {
+        match value {
+            BlackjackPayoutArg::Ratio3to2 => Self::Ratio3to2,
+            BlackjackPayoutArg::Ratio6to5 => Self::Ratio6to5,
+        }
+    }
+}
 
 #[derive(ValueEnum, Clone)]
 pub enum SurrenderArg {
@@ -64,6 +94,9 @@ impl From<&Soft17RuleArg> for Soft17Rule {
 
 #[derive(Args)]
 pub struct RulesArgs {
+    #[arg(long, default_value_t = BlackjackPayoutArg::Ratio3to2)]
+    pub blackjack_payout: BlackjackPayoutArg,
+
     #[arg(long, default_value_t = 6)]
     pub num_decks: u8,
 
@@ -83,6 +116,7 @@ pub struct RulesArgs {
 impl From<&RulesArgs> for Rules {
     fn from(value: &RulesArgs) -> Self {
         Self {
+            blackjack_payout: (&value.blackjack_payout).into(),
             num_decks: value.num_decks,
             surrender: (&value.surrender).into(),
             double_after_split_allowed: value.double_after_split_allowed,

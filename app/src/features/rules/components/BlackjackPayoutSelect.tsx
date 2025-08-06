@@ -4,24 +4,24 @@ import {
   SelectContent,
   SelectTrigger,
 } from "@/components/Select";
-import type { Soft17Rule } from "@blackjack/wasm";
+import type { BlackjackPayout } from "@blackjack/wasm";
 import { forwardRef, type ComponentRef } from "react";
 
-export interface Soft17RuleSelectProps {
-  value?: Soft17Rule;
-  onChange?: (value: Soft17Rule) => void;
+export interface BlackjackPayoutSelectProps {
+  value?: BlackjackPayout;
+  onChange?: (value: BlackjackPayout) => void;
 }
 
-export const Soft17RuleSelect = forwardRef<
+export const BlackjackPayoutSelect = forwardRef<
   ComponentRef<typeof SelectTrigger>,
-  Soft17RuleSelectProps
+  BlackjackPayoutSelectProps
 >(({ value, onChange }, ref) => {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger ref={ref} />
       <SelectContent>
-        <SelectItem value="Hit">Hit</SelectItem>
-        <SelectItem value="Stand">Stand</SelectItem>
+        <SelectItem value="Ratio3to2">3 to 2</SelectItem>
+        <SelectItem value="Ratio6to5">6 to 5</SelectItem>
       </SelectContent>
     </Select>
   );

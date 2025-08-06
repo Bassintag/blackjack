@@ -66,6 +66,21 @@ impl From<strategy::PlayerAction> for PlayerAction {
 }
 
 #[derive(Tsify, Serialize, Deserialize)]
+pub enum BlackjackPayout {
+    Ratio3to2,
+    Ratio6to5,
+}
+
+impl From<BlackjackPayout> for rules::BlackjackPayout {
+    fn from(value: BlackjackPayout) -> Self {
+        match value {
+            BlackjackPayout::Ratio3to2 => Self::Ratio3to2,
+            BlackjackPayout::Ratio6to5 => Self::Ratio6to5,
+        }
+    }
+}
+
+#[derive(Tsify, Serialize, Deserialize)]
 pub enum SurrenderType {
     None,
     Early,
@@ -100,6 +115,8 @@ impl From<Soft17Rule> for rules::Soft17Rule {
 #[derive(Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct Rules {
+    #[serde(rename = "blackjackPayout")]
+    pub blackjack_payout: BlackjackPayout,
     #[serde(rename = "numDecks")]
     pub num_decks: u8,
     #[serde(rename = "dealerSoft17")]
@@ -115,6 +132,7 @@ pub struct Rules {
 impl From<Rules> for rules::Rules {
     fn from(value: Rules) -> Self {
         Self {
+            blackjack_payout: value.blackjack_payout.into(),
             num_decks: value.num_decks,
             dealer_soft_17: value.dealer_soft_17.into(),
             double_after_split_allowed: value.double_after_split_allowed,
@@ -131,6 +149,7 @@ pub struct RoundEvs {
     pub stand: f64,
     pub double: f64,
     pub split: Option<f64>,
+    pub surrender: Option<f64>,
 }
 
 impl From<strategy::RoundEvs> for RoundEvs {
@@ -140,6 +159,7 @@ impl From<strategy::RoundEvs> for RoundEvs {
             stand: value.stand,
             double: value.double,
             split: value.split,
+            surrender: value.surrender,
         }
     }
 }

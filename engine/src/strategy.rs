@@ -6,7 +6,7 @@ use crate::{
     card::{Card, Rank},
     game::GameState,
     hand::{Hand, Outcome},
-    rules::{Rules, SurrenderType},
+    rules::{BlackjackPayout, Rules, SurrenderType},
     shoe::Shoe,
 };
 
@@ -157,7 +157,10 @@ impl<S: Shoe + Clone + Eq + Hash> StrategyGenerator<S> {
             let ev = match Hand::compare(&state.player_hand, &dealer_hand) {
                 Outcome::Win => {
                     if state.player_hand.is_blackjack() {
-                        1.5
+                        match self.rules.blackjack_payout {
+                            BlackjackPayout::Ratio3to2 => 1.5,
+                            BlackjackPayout::Ratio6to5 => 1.2,
+                        }
                     } else {
                         1.0
                     }

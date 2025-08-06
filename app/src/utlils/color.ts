@@ -5,6 +5,7 @@ const colors = {
   red: "text-red-500",
   green: "text-green-500",
   blue: "text-cyan-500",
+  purple: "text-purple-500",
 };
 
 export const textColor = (c: Color) => {
@@ -16,6 +17,7 @@ const backgroundColors = {
   red: "bg-red-500",
   green: "bg-green-500",
   blue: "bg-blue-500",
+  purple: "bg-purple-500",
 };
 
 export const backgroundColor = (c: Color) => {

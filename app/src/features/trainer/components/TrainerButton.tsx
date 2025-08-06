@@ -24,7 +24,7 @@ export const TrainerButton = ({
   return (
     <Button
       className={cn(
-        "font-semibold text-white h-auto",
+        "font-semibold text-white h-auto hover:bg-accent hover:text-accent-foreground",
         backgroundColor(color),
         className,
       )}

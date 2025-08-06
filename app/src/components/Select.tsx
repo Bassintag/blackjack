@@ -1,6 +1,6 @@
 import { cn } from "@/utlils/cn";
 import * as S from "@radix-ui/react-select";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
   forwardRef,
   type ComponentPropsWithoutRef,
@@ -13,7 +13,23 @@ export const SelectTrigger = forwardRef<
   ComponentRef<typeof S.Trigger>,
   ComponentPropsWithoutRef<typeof S.Trigger>
 >(({ className, ...rest }, ref) => {
-  return <S.Trigger ref={ref} className={cn("", className)} {...rest} />;
+  return (
+    <S.Trigger
+      ref={ref}
+      className={cn(
+        "w-full h-9 px-2 flex flex-row gap-2 items-center text-sm bg-input border border-border rounded-lg outline-none",
+        className,
+      )}
+      {...rest}
+    >
+      <div className="grow text-start">
+        <S.SelectValue />
+      </div>
+      <S.SelectIcon>
+        <ChevronDownIcon className="size-4" />
+      </S.SelectIcon>
+    </S.Trigger>
+  );
 });
 
 export const SelectContent = ({

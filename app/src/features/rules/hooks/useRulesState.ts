@@ -9,11 +9,12 @@ export interface RulesState {
 }
 
 const defaultRules: Rules = {
+  blackjackPayout: "Ratio3to2",
   dealerSoft17: "Stand",
+  surrender: "None",
   numDecks: 6,
   maxSplits: 1,
   doubleAfterSplitAllowed: false,
-  surrenderAllowed: false,
 };
 
 export const useRulesState = create(
@@ -23,6 +24,6 @@ export const useRulesState = create(
       setRules: (rules) => set({ rules }),
       reset: () => set({ rules: defaultRules }),
     }),
-    { name: "blackjack:rules" },
+    { name: "blackjack:rules", version: 2 },
   ),
 );

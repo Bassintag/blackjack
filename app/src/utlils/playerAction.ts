@@ -7,9 +7,10 @@ const configs: Record<
 > = {
   ["Hit"]: { label: "Hit", short: "H", color: "red" },
   ["Stand"]: { label: "Stand", short: "S", color: "yellow" },
-  ["DoubleOrHit"]: { label: "Double (or hit)", short: "DH", color: "blue" },
-  ["DoubleOrStand"]: { label: "Double (or stand)", short: "DS", color: "blue" },
+  ["DoubleOrHit"]: { label: "Double (or hit)", short: "Dh", color: "blue" },
+  ["DoubleOrStand"]: { label: "Double (or stand)", short: "Ds", color: "blue" },
   ["Split"]: { label: "Split", short: "P", color: "green" },
+  ["Surrender"]: { label: "Surrender", short: "SUR", color: "purple" },
 };
 
 export const getPlayerActionConfig = (action: PlayerAction) => {

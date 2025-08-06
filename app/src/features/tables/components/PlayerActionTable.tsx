@@ -97,6 +97,12 @@ export const PlayerActionTable = ({ table, type }: PlayerActionTableProps) => {
                     <InfoValue>{value.evs.split}</InfoValue>
                   </InfoRow>
                 )}
+                {value.evs.surrender != null && (
+                  <InfoRow>
+                    <InfoTitle>Surrender</InfoTitle>
+                    <InfoValue>{value.evs.surrender}</InfoValue>
+                  </InfoRow>
+                )}
               </ul>
             </TooltipContent>
           </Tooltip>,

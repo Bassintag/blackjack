@@ -13,13 +13,15 @@ import { FormProvider, useForm, type Resolver } from "react-hook-form";
 import z from "zod";
 import { useRulesState } from "../hooks/useRulesState";
 import { Soft17RuleSelect } from "./Soft17RuleSelect";
+import { BlackjackPayoutSelect } from "./BlackjackPayoutSelect";
 
 export const rulesFormSchema = z.object({
+  blackjackPayout: z.enum(["Ratio3to2", "Ratio6to5"]),
   numDecks: z.coerce.number().min(1).max(255),
   dealerSoft17: z.enum(["Hit", "Stand"]),
   maxSplits: z.coerce.number().min(1).max(255),
   doubleAfterSplitAllowed: z.boolean(),
-  surrenderAllowed: z.boolean(),
+  surrender: z.enum(["None", "Early", "Late"]),
 });
 
 export type RulesFormValues = z.infer<typeof rulesFormSchema>;
@@ -43,6 +45,19 @@ export const RulesForm = () => {
         className="grow flex flex-col gap-4"
         onSubmit={form.handleSubmit(onSubmit)}
       >
+        <FormControl
+          control={form.control}
+          name="blackjackPayout"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Blackjack payout</FormLabel>
+              <FormField>
+                <BlackjackPayoutSelect {...field} />
+              </FormField>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormControl
           control={form.control}
           name="dealerSoft17"
@@ -92,21 +107,6 @@ export const RulesForm = () => {
                   <Switch {...field} />
                 </FormField>
                 <FormLabel>Double after split</FormLabel>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormControl
-          control={form.control}
-          name="surrenderAllowed"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex flex-row gap-2 items-center">
-                <FormField>
-                  <Switch {...field} />
-                </FormField>
-                <FormLabel>Surrender</FormLabel>
               </div>
               <FormMessage />
             </FormItem>

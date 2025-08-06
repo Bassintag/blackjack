@@ -15,8 +15,8 @@ export const TrainerStats = ({
       </CardHeader>
       <CardContent>
         <div>Total: {total}</div>
-        <div>Correct: {failures}</div>
-        <div>Errors: {success}</div>
+        <div>Correct: {success}</div>
+        <div>Errors: {failures}</div>
       </CardContent>
     </Card>
   );
